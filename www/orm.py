@@ -1,4 +1,4 @@
-__author__ = 'Jack D'
+__author__ = 'Dong'
 
 import asyncio, logging;logging.basicConfig(level=logging.INFO)
 import aiomysql
@@ -26,12 +26,11 @@ async def create_pool(loop, **kw):
     )
 
 
-@asyncio.coroutine
-def destory_pool():
+async def destory_pool():
     global __pool
     if __pool is not None :
         __pool.close()
-        yield from __pool.wait_closed()
+        await __pool.wait_closed()
 
 async def select(sql, args, size=None):
     log(sql, args)
@@ -132,7 +131,7 @@ class ModelMetaclass(type):
         attrs['__table__'] = tableName
         attrs['__primary_key__'] = primaryKey
         attrs['__fields__'] = fields
-        attrs['__select__'] = 'select `%s`, `%s` from `%s`' % (primaryKey, ','.join(escaped_fields), tableName)
+        attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ','.join(escaped_fields), tableName)
         attrs['__insert__'] = 'insert into `%s` (%s, `%s`) VALUES (%s)' % (
             tableName, ','.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
         attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (
@@ -202,7 +201,8 @@ class Model(dict, metaclass=ModelMetaclass):
                 args.extend(limit)
             else:
                 raise ValueError('Invalid limit value: %s' % str(limit))
-        rs = await execute(' '.join(sql), args)
+        rs = await select(' '.join(sql), args)
+        return [cls(**r) for r in rs]
 
     @classmethod
     async def findNumber(cls, selectField, where=None, args=None):
@@ -228,7 +228,7 @@ class Model(dict, metaclass=ModelMetaclass):
             logging.warning('faied to insert record :affected rows: %s' % rows)
 
     async def update(self):
-        args = list(map(self.getValue, self.__fields__))
+        args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
         rows = await execute(self.__update__, args)
         if rows != 1:
@@ -257,11 +257,12 @@ class User(Model):
 
 
 # 测试代码
-loop = asyncio.get_event_loop()
-loop.run_until_complete(create_pool(loop,user='root',password='root',db='learnpy',port=3306))
-print(__pool)
-u = User(id=123,name='dzc',email='358673817@qq.com',passwd='123',image=' ')
-loop.run_until_complete(u.save())
-# loop.run_until_complete(u.remove())
-loop.run_until_complete(destory_pool())
-loop.close()
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(create_pool(loop,user='root',password='root',db='learnpy',port=3306))
+    print(__pool)
+    u = User(id=123,name='dzc',email='358673817@qq.com',passwd='123',image=' ')
+    loop.run_until_complete(u.save())
+    # loop.run_until_complete(u.remove())
+    loop.run_until_complete(destory_pool())
+    loop.close()

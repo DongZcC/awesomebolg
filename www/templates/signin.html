@@ -1,0 +1,58 @@
+{% extends '__base__.html' %}
+{% block title %} 登录 {% endblock %}
+
+{% block beforehead %}
+<script>
+$(function (){
+    var vm = new Vue({
+        el:'#vm',
+        data:{
+            email:'',
+            passwd:''
+        },
+        methods:{
+            submit:function (event){
+                event.preventDefault();
+                var $form = $('#vm')
+                email = this.email.trim().toLowerCase()
+                data = {
+                    email:email,
+                    passwd:this.passwd == '' ? '' : CryptoJS.SHA1(email + ':' + this.passwd).toString()
+                }
+                $form.postJSON('api/authenticate',data,function(err,result){
+                   if (err) {
+                       return $form.showFormError(err)
+                   }
+                   return location.assign('/')
+                });
+            }
+        }
+    })
+    $('#vm').show()
+})
+</script>
+{% endblock %}
+
+{% block content %}
+    <div class="uk-width-1-1">
+        <h1 class="uk-align-center">欢迎登录</h1>
+        <form class="uk-form uk-form-stacked" id="vm" v-on="submit: submit">
+            <div class="uk-alert uk-alert-danger uk-hidden"></div>
+            <div class="uk-form-row">
+                <label class="uk-form-label">邮箱地址:</label>
+                <div>
+                    <input v-model="email" type="text" maxlength="50" placeholder="邮箱地址" class="uk-width-1-1">
+                </div>
+                <label class="uk-form-label">密码：</label>
+                <div>
+                    <input v-model="passwd" type="password" maxlength="50" placeholder="输入口令" class="uk-width-1-1">
+                </div>
+
+                <div class="uk-form-row">
+                    <button type="submit" class="uk-button uk-button-primary"> <i class="uk-icon-user"></i> 登录</button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+{% endblock %}
